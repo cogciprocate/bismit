@@ -6,8 +6,8 @@ use std::cmp;
 // use std::ops::AddAssign;
 // use std::fmt::{Debug, Display};
 // use num::{Num, NumCast};
-use rand;
-use rand::distributions::{Range, IndependentSample};
+use rand::{FromEntropy, rngs::SmallRng};
+use rand::distributions::{Range, Distribution};
 use cmn::{self, TractFrameMut};
 use super::ScalarEncodable;
 pub use self::scalar_glyph_writer::ScalarGlyphWriter;
@@ -110,7 +110,7 @@ pub fn encode_scalar<T>(val: T, val_range: (T, T), tract: &mut TractFrameMut)
     // Save some inverses just to avoid repeated calculation:
     let radius_neg = 0 - radius;
 
-    let mut rng = rand::weak_rng();
+    let mut rng = SmallRng::from_entropy();
     let r_range = Range::<u8>::new(64, 128);
 
     // Clear tract frame:
@@ -135,7 +135,7 @@ pub fn encode_scalar<T>(val: T, val_range: (T, T), tract: &mut TractFrameMut)
         for u in u_z..u_n {
             let idx = (((v + center.v) * u_size) + u + center.u) as usize;
             unsafe {
-                *tract.get_unchecked_mut(idx) = r_range.ind_sample(&mut rng);
+                *tract.get_unchecked_mut(idx) = r_range.sample(&mut rng);
                 // *tract.get_unchecked_mut(idx) = 255;
             }
         }

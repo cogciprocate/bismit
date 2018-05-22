@@ -14,7 +14,7 @@ mod error;
 mod tract_frame;
 mod map_store;
 mod double_buffer_mutex;
-mod xorshiftrng;
+// mod xorshiftrng;
 pub mod util;
 pub mod completion_pool;
 
@@ -28,8 +28,8 @@ use std::collections::{BTreeMap, HashSet};
 // use std::ops::AddAssign;
 use num::{FromPrimitive, };
 // use num::{Num, NumCast};
-use rand;
-use rand::distributions::{IndependentSample, /*Range*/};
+use rand::{FromEntropy, rngs::SmallRng};
+use rand::distributions::{Distribution, Range};
 #[allow(unused_imports)]
 use find_folder::Search;
 use ocl::traits::OclScl;
@@ -47,9 +47,9 @@ pub use self::map_store::MapStore;
 pub use self::slice_dims::{calc_scale, scale};
 pub use self::double_buffer_mutex::DoubleBufferMutex;
 
-// A clone of the counterpart types in the `rand` crate. Duplicated due to
-// some sort of bug with deriving `Debug`.
-pub use self::xorshiftrng::{weak_rng, XorShiftRng, Range, SampleRange};
+// // A clone of the counterpart types in the `rand` crate. Duplicated due to
+// // some sort of bug with deriving `Debug`.
+// pub use self::xorshiftrng::{weak_rng, SmallRng, Range, SampleRange};
 
 // pub(crate) use self::completion_pool::UnparkMutex;
 
@@ -532,13 +532,13 @@ pub fn sparse_vec<T: OclScl>(size: usize, min_val: T, max_val: T, sp_fctr_log2: 
     let range_max: i64 = max_val.to_i64().expect("cmn::sparse_vec(): max_val.to_i64()") as i64 + 1;
     let range_min: i64 = min_val.to_i64().expect("cmn::sparse_vec(): min_val.to_i64()") as i64;
 
-    let mut rng = rand::weak_rng();
+    let mut rng = SmallRng::from_entropy();
     let val_range = Range::new(range_min, range_max);
     let idx_range = Range::new(0, 1 << sp_fctr_log2);
 
     for i in 0..notes {
-        vec[(i << sp_fctr_log2) + idx_range.ind_sample(&mut rng)] = FromPrimitive::from_i64(val_range.ind_sample(&mut rng)).expect("cmn::sparse_vec()");
-        //vec[(i << sp_fctr_log2) + idx_range.ind_sample(&mut rng)] = std::num::cast(val_range.ind_sample(&mut rng)).expect("cmn.rs");
+        vec[(i << sp_fctr_log2) + idx_range.sample(&mut rng)] = FromPrimitive::from_i64(val_range.sample(&mut rng)).expect("cmn::sparse_vec()");
+        //vec[(i << sp_fctr_log2) + idx_range.sample(&mut rng)] = std::num::cast(val_range.sample(&mut rng)).expect("cmn.rs");
     }
 
     vec

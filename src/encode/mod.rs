@@ -16,7 +16,7 @@ use std::ops::AddAssign;
 use std::fmt::{Debug, Display};
 use num::{Num, NumCast};
 // use rand;
-// use rand::distributions::{Range, IndependentSample};
+// use rand::distributions::{Range, Distribution};
 use cmn::{TractFrameMut, ParaHexArray};
 pub use self::write::{ScalarGlyphWriter, ScalarSdrWriter, Vector2dWriter, encode_scalar,
     encode_hex_mold_scaled, gen_axn_idxs, write_rand_subset_linear, write_rand_subset_stochastic};

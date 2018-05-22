@@ -41,9 +41,10 @@ pub mod tests {
     use std::sync::Arc;
     use std::ops::{Range, Deref};
     use std::fmt::{Display, Formatter, Result};
-    // use rand::{XorShiftRng};
+    // use rand::{SmallRng};
+    use rand::rngs::SmallRng;
     use map::{AreaMap, AreaMapTest, LayerAddress, axon_idx, DendriteClass, DendriteKind};
-    use cmn::{self, CorticalDims, XorShiftRng, SliceDims};
+    use cmn::{self, CorticalDims, SliceDims};
     use cortex::{den_idx, syn_idx, TuftDims};
     use super::DataCellLayer;
     use {Thalamus, SlcId};
@@ -58,7 +59,7 @@ pub mod tests {
         fn print_range(&self, idx_range: Option<Range<usize>>);
         // fn print_all(&mut self, print_syns: bool);
         fn print_all(&self, /*print_children: bool*/);
-        fn rng(&mut self) -> &mut XorShiftRng;
+        fn rng(&mut self) -> &mut SmallRng;
         fn rand_cel_coords(&mut self) -> CelCoords;
         fn last_cel_coords(&self) -> CelCoords;
         fn cel_idx(&self, slc_id: u8, v_id: u32, u_id: u32)-> u32;

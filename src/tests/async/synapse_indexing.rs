@@ -75,7 +75,7 @@ impl SubcorticalNucleus for SynIdxTest {
         //     self.trial_iter.global_cycle_idx % self.sdrs.pattern_count
         // } else {
         //     // Choose a random SDR:
-        //     Range::new(0, self.sdrs.pattern_count).ind_sample(&mut self.sdrs.rng)
+        //     Range::new(0, self.sdrs.pattern_count).sample(&mut self.sdrs.rng)
         // };
 
         // Write sdr to pathway:

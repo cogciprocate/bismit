@@ -1,6 +1,6 @@
 use std::fmt;
-use rand::{self, XorShiftRng};
-use rand::distributions::{Range as RandRange, IndependentSample};
+use rand::{FromEntropy, rngs::SmallRng,
+    distributions::{Range as RandRange, Distribution}};
 use cmn::{TractFrameMut, TractDims};
 use encode::ScalarEncodable;
 
@@ -12,16 +12,16 @@ const AXON_VALUE: u8 = 127;
 
 
 #[inline]
-pub fn gen_axn_idxs(rng: &mut XorShiftRng, active_count: usize, sdr_len: usize) -> Vec<TractAxonIdx> {
+pub fn gen_axn_idxs(rng: &mut SmallRng, active_count: usize, sdr_len: usize) -> Vec<TractAxonIdx> {
     let range = RandRange::new(0, sdr_len);
-    (0..active_count).map(|_| range.ind_sample(rng)).collect()
+    (0..active_count).map(|_| range.sample(rng)).collect()
 }
 
 /// Writes to deterministic indices.
 #[inline]
 #[allow(dead_code)]
 pub fn write_rand_subset_linear(contrib_count: usize, rev: bool, _: usize,
-        indices: &[usize], _: &mut XorShiftRng, tar: &mut [u8])
+        indices: &[usize], _: &mut SmallRng, tar: &mut [u8])
 {
     fn write(idx_idx: usize, indices: &[usize], tar: &mut [u8]) {
         unsafe {
@@ -47,12 +47,12 @@ pub fn write_rand_subset_linear(contrib_count: usize, rev: bool, _: usize,
 #[inline]
 #[allow(dead_code)]
 pub fn write_rand_subset_stochastic(subset_count: usize, set_count_ttl: usize, indices: &[usize],
-        rng: &mut XorShiftRng, tar: &mut [u8])
+        rng: &mut SmallRng, tar: &mut [u8])
 {
     let idx_range = RandRange::new(0, set_count_ttl);
 
     for _ in 0..subset_count {
-        let idx_idx = idx_range.ind_sample(rng);
+        let idx_idx = idx_range.sample(rng);
 
         unsafe {
             let tract_idx = *indices.get_unchecked(idx_idx);
@@ -74,7 +74,7 @@ pub struct ScalarSdrWriter<T> {
     sdr_active_count: usize,
     waypoint_indices: Vec<Vec<TractAxonIdx>>,
     sdrs: Vec<Vec<u8>>,
-    rng: XorShiftRng,
+    rng: SmallRng,
 }
 
 impl<T: ScalarEncodable> ScalarSdrWriter<T> {
@@ -98,7 +98,7 @@ impl<T: ScalarEncodable> ScalarSdrWriter<T> {
         let sdr_len = tract_dims.to_len();
         let sdr_active_count = sdr_len / SPARSITY;
 
-        let mut rng = rand::weak_rng();
+        let mut rng = SmallRng::from_entropy();
 
         // let mut waypoint_indices = Vec::with_capacity(way_count);
         // for _ in 0..way_count {
@@ -183,9 +183,9 @@ impl<T: ScalarEncodable> ScalarSdrWriter<T> {
         // ///////
 
         // let w0_idz = RandRange::new(0, 1 + self.sdr_active_count - way_0_contrib_count)
-        //     .ind_sample(&mut self.rng);
+        //     .sample(&mut self.rng);
         // let w1_idz = RandRange::new(0, 1 + self.sdr_active_count - way_1_contrib_count)
-        //     .ind_sample(&mut self.rng);
+        //     .sample(&mut self.rng);
 
 
 
@@ -196,7 +196,7 @@ impl<T: ScalarEncodable> ScalarSdrWriter<T> {
         // // for idx in w0_idz..(w0_idz + way_0_contrib_count) {
         // // for idx in 0..way_0_contrib_count {
         // for _ in 0..way_0_contrib_count {
-        //     let idx_idx = idx_range.ind_sample(&mut self.rng);
+        //     let idx_idx = idx_range.sample(&mut self.rng);
 
         //     unsafe {
         //         let tract_idx = *self.waypoint_indices.get_unchecked(way_0_idx)
@@ -211,7 +211,7 @@ impl<T: ScalarEncodable> ScalarSdrWriter<T> {
 
         // // for idx in w1_idz..(w1_idz + way_1_contrib_count) {
         // for _ in 0..way_1_contrib_count {
-        //     let idx_idx = idx_range.ind_sample(&mut self.rng);
+        //     let idx_idx = idx_range.sample(&mut self.rng);
 
         //     unsafe {
         //         let tract_idx = *self.waypoint_indices.get_unchecked(way_1_idx)
@@ -231,7 +231,7 @@ impl<T: ScalarEncodable> ScalarSdrWriter<T> {
         //             .enumerate()
         //     {
         //         // Get a random number between 0 and 254:
-        //         let rn = range.ind_sample(&mut self.rng);
+        //         let rn = range.sample(&mut self.rng);
         //         // Determine if way_0 contrib (0-255) is greater:
         //         let way_0_win = way_0_contrib > rn;
         //         // If so, use w0, else use w1:
@@ -265,7 +265,7 @@ impl<T> fmt::Debug for ScalarSdrWriter<T> where T: fmt::Debug {
             .field("sdr_active_count", &self.sdr_active_count)
             .field("waypoint_indices", &self.waypoint_indices)
             .field("sdrs", &self.sdrs)
-            // .field("rng", "XorShiftRng { .. }")
+            // .field("rng", "SmallRng { .. }")
             .finish()
     }
 }

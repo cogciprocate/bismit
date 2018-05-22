@@ -14,7 +14,7 @@ pub struct IntraColumnInhib {
     kern: Kernel,
     exe_cmd_uid: CommandUid,
     exe_cmd_idx: usize,
-    // rng: cmn::XorShiftRng,
+    // rng: cmn::SmallRng,
     settings: CorticalAreaSettings,
 }
 
@@ -62,7 +62,7 @@ impl IntraColumnInhib {
             kern: kern,
             exe_cmd_uid,
             exe_cmd_idx: 0,
-            // rng: cmn::weak_rng(),
+            // rng: SmallRng::from_entropy(),
             settings: settings,
         })
     }

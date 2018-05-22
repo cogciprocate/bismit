@@ -1,4 +1,5 @@
-use cmn::{self, CmnResult, CorticalDims, XorShiftRng, DEN_BASAL_PROXIMAL_FLAG,
+use rand::{FromEntropy, rngs::SmallRng};
+use cmn::{self, CmnResult, CorticalDims, DEN_BASAL_PROXIMAL_FLAG,
     DEN_BASAL_DISTAL_FLAG, DEN_APICAL_DISTAL_FLAG};
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult, Event};
 use ocl::traits::OclPrm;
@@ -21,7 +22,7 @@ pub struct PyramidalLayer {
     pyr_cycle_kernel: Kernel,
     axon_slc_ids: Vec<u8>,
     pyr_lyr_axon_idz: u32,
-    rng: XorShiftRng,
+    rng: SmallRng,
 
     states: Buffer<u8>,
     // TODO: Remove:
@@ -195,7 +196,7 @@ impl PyramidalLayer {
             pyr_cycle_kernel: pyr_cycle_kernel,
             axon_slc_ids: axon_slc_ids,
             pyr_lyr_axon_idz: pyr_lyr_axon_idz,
-            rng: cmn::weak_rng(),
+            rng: SmallRng::from_entropy(),
             states: states,
             // best_den_states_raw: best_den_states_raw,
             flag_sets: flag_sets,
@@ -361,9 +362,10 @@ impl DataCellLayer for PyramidalLayer {
 pub mod tests {
     use std::ops::{Range};
     // use rand::{Rng};
-    use rand::distributions::{IndependentSample};
+    use rand::rngs::SmallRng;
+    use rand::distributions::{Distribution, Range as RandRange};
     use ocl::util;
-    use cmn::{self, XorShiftRng, Range as RandRange};
+    use cmn::{self};
     use cortex::{PyramidalLayer, DataCellLayer, DataCellLayerTest, CelCoords};
 
     impl DataCellLayerTest for PyramidalLayer {
@@ -439,7 +441,7 @@ pub mod tests {
             self.print_range(None);
         }
 
-        fn rng(&mut self) -> &mut XorShiftRng {
+        fn rng(&mut self) -> &mut SmallRng {
             &mut self.rng
         }
 
@@ -448,9 +450,9 @@ pub mod tests {
             let v_range = RandRange::new(0, self.dims().v_size());
             let u_range = RandRange::new(0, self.dims().u_size());
 
-            let slc_id_lyr = slc_range.ind_sample(self.rng());
-            let v_id = v_range.ind_sample(self.rng());
-            let u_id = u_range.ind_sample(self.rng());
+            let slc_id_lyr = slc_range.sample(self.rng());
+            let v_id = v_range.sample(self.rng());
+            let u_id = u_range.sample(self.rng());
 
             let axon_slc_id = self.base_axon_slc() + slc_id_lyr;
 

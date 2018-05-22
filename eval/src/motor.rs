@@ -245,7 +245,7 @@ pub fn eval() {
 
     let cortex = cortex_builder.build().unwrap();
 
-    let controls = ::spawn_threads(cortex, PRI_AREA);
+    let controls = ::spawn_threads(cortex, PRI_AREA, true);
 
     ::join_threads(controls)
 }

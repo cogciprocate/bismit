@@ -3,8 +3,13 @@
 //!
 //!
 //
+// The flywheel is crusty as hell and needs to be totally overhauled...
+//
 // * TODO:
+// - Completely redesign.
 // - Optional command line printing (and possibly a menu here instead of in vibi).
+//
+//
 //
 //
 //
@@ -172,7 +177,6 @@ pub enum LoopAction {
 
 /// An event loop for the cortex.
 ///
-// Currently clocking in at ~488 bytes (2017-Apr-10)
 pub struct Flywheel {
     command_rx: Receiver<Command>,
     req_res_pairs: Vec<(Receiver<Request>, Sender<Response>)>,
@@ -205,6 +209,8 @@ impl Flywheel {
         self.req_res_pairs.push((req_rx, res_tx));
     }
 
+
+
     #[deprecated]
     pub fn add_sensory_rx<S: AsRef<str>>(&mut self, _sensory_rx: Receiver<SensoryFrame>,
             _pathway_name: S)
@@ -226,30 +232,24 @@ impl Flywheel {
     }
 
     pub fn spin(&mut self) {
-
-        // println!("FLYWHEEL: 0");
-
         loop {
             if self.exiting { break; }
             self.intake_sensory_frames().unwrap();
             self.fulfill_requests();
 
-            // println!("FLYWHEEL: 1000");
-
+            // println!("Flywheel::spin: Receiving...");
             match self.command_rx.recv() {
                 Ok(cmd) => match cmd {
                     Command::Iterate(i) => self.cycle_iters_max = i,
                     Command::Exit => {
                         self.exiting = true;
+                        // println!("############# BREAKING");
                         break;
                     },
                     _ => continue,
                 },
                 Err(e) => panic!("{}", e),
             }
-
-
-            // println!("FLYWHEEL: 2000");
 
             self.status.cur_cycle = Wrapping(0);
             self.status.cur_start_time = Some(time::get_time());
@@ -265,8 +265,6 @@ impl Flywheel {
                 _ => (),
             }
 
-            // println!("FLYWHEEL: 9000");
-
             self.status.cycling = false;
             self.status.prev_cycles += self.status.cur_cycle;
             self.status.prev_elapsed = self.status.prev_elapsed + self.status.cur_elapsed();
@@ -277,12 +275,14 @@ impl Flywheel {
 
         // Broadcast an `Exiting` to everyone.
         for &(_, ref res_tx) in self.req_res_pairs.iter() {
-            // Handle this?
+            // Handle this possible error?
             res_tx.send(Response::Exiting).ok();
         }
     }
 
     fn cycle_loop(&mut self) -> Command {
+        // println!("Flywheel::cycle_loop: Looping {} times...", self.cycle_iters_max);
+
         loop {
             if (self.cycle_iters_max != 0) && (self.status.cur_cycle.0 >= self.cycle_iters_max) { break; }
 
@@ -318,7 +318,11 @@ impl Flywheel {
     }
 
     fn fulfill_requests(&mut self) {
-        for &(ref req_rx, ref res_tx) in self.req_res_pairs.iter() {
+        // This shouldn't allocate (unless pushed to below), but this may be
+        // better allocated on the `Flywheel`:
+        let mut disconnected_pair_idxs = Vec::new();
+
+        for (pair_idx, &(ref req_rx, ref res_tx)) in self.req_res_pairs.iter().enumerate() {
             loop {
                 match req_rx.try_recv() {
                     Ok(r) => {
@@ -351,10 +355,17 @@ impl Flywheel {
                         TryRecvError::Empty => break,
                         // TODO: Have this either do nothing or check to see
                         // if any senders remain and exit if 0.
-                        TryRecvError::Disconnected => (),
+                        TryRecvError::Disconnected => {
+                            disconnected_pair_idxs.push(pair_idx);
+                            break;
+                        },
                     },
                 }
             }
+        }
+
+        for pair_idx in disconnected_pair_idxs {
+            self.req_res_pairs.remove(pair_idx);
         }
     }
 

@@ -64,7 +64,8 @@
 //!
 
 
-use cmn::{self, CmnResult, CorticalDims, XorShiftRng};
+use rand::{FromEntropy, rngs::SmallRng};
+use cmn::{self, CmnResult, CorticalDims};
 use map::{AreaMap, SynSrcSlices, SynSrcIdxCache, SynSrc, LayerAddress};
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult, Event};
 use ocl::traits::OclPrm;
@@ -110,7 +111,7 @@ pub struct Synapses {
     kernels_cycle: Vec<Kernel>,
     src_idx_caches_by_tft: Vec<SynSrcIdxCache>,
     syn_src_slices: SynSrcSlices,
-    rng: XorShiftRng,
+    rng: SmallRng,
 
     states: Buffer<u8>,
     // TODO: Switch to `u8` (`uchar`):
@@ -318,7 +319,7 @@ impl Synapses {
             kernels_cycle,
             src_idx_caches_by_tft: src_idx_caches_by_tft,
             syn_src_slices: syn_src_slices,
-            rng: cmn::weak_rng(),
+            rng: SmallRng::from_entropy(),
             states: states,
             strengths: strengths,
             src_slc_ids: src_slc_ids,
@@ -521,9 +522,10 @@ pub mod tests {
     #![allow(non_snake_case, dead_code)]
     use std::ops::{Range};
     use std::fmt::{Display, Formatter, Result as FmtResult};
-    use rand::distributions::{IndependentSample};
+    use rand::rngs::SmallRng;
+    use rand::distributions::{Distribution, Range as RandRange};
     use ocl::util;
-    use cmn::{CorticalDims, XorShiftRng, Range as RandRange};
+    use cmn::{CorticalDims};
     // use super::super::dendrites::{self};
     use cortex::{dendrites, CelCoords};
     use super::{Synapses, TuftDims};
@@ -543,7 +545,7 @@ pub mod tests {
         fn print_src_slc_ids(&self, idx_range: Option<Range<usize>>);
         fn print_range(&self, range: Option<Range<usize>>);
         fn print_all(&self);
-        fn rng(&mut self) -> &mut XorShiftRng;
+        fn rng(&mut self) -> &mut SmallRng;
     }
 
     impl SynapsesTest for Synapses {
@@ -601,7 +603,7 @@ pub mod tests {
 
         fn rand_syn_coords(&mut self, cel_coords: CelCoords) -> SynCoords {
             let tft_id_range = RandRange::new(0, self.tft_count());
-            let tft_id = tft_id_range.ind_sample(self.rng());
+            let tft_id = tft_id_range.sample(self.rng());
 
             let tft_syn_idz = self.syn_idzs_by_tft[tft_id];
             let tft_dims = self.tft_dims_by_tft[tft_id].clone();
@@ -611,8 +613,8 @@ pub mod tests {
             let syns_per_den = self.tft_dims_by_tft()[tft_id].syns_per_den();
             let syn_id_den_range = RandRange::new(0, syns_per_den);
 
-            let den_id_celtft = den_id_celtft_range.ind_sample(&mut self.rng);
-            let syn_id_den = syn_id_den_range.ind_sample(&mut self.rng);
+            let den_id_celtft = den_id_celtft_range.sample(&mut self.rng);
+            let syn_id_den = syn_id_den_range.sample(&mut self.rng);
 
             SynCoords::new(cel_coords, tft_id, tft_syn_idz, tft_dims,
                 den_id_celtft, syn_id_den)
@@ -701,7 +703,7 @@ pub mod tests {
             self.print_range(None);
         }
 
-        fn rng(&mut self) -> &mut XorShiftRng {
+        fn rng(&mut self) -> &mut SmallRng {
             &mut self.rng
         }
     }

@@ -1,7 +1,7 @@
 #![allow(unused_imports)]
 
-use rand::Rng;
-use cmn::{self, CmnResult, CorticalDims, XorShiftRng};
+use rand::{Rng, FromEntropy, rngs::SmallRng};
+use cmn::{self, CmnResult, CorticalDims};
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Result as OclResult, Event};
 use std::collections::BTreeMap;
 use ocl::traits::OclPrm;
@@ -36,7 +36,7 @@ pub struct Tufts {
 
     dens: Dendrites,
     settings: CorticalAreaSettings,
-    rng: XorShiftRng,
+    rng: SmallRng,
 }
 
 impl Tufts {
@@ -241,7 +241,7 @@ impl Tufts {
 
             dens,
             settings,
-            rng: cmn::weak_rng(),
+            rng: SmallRng::from_entropy(),
         })
     }
 
@@ -378,9 +378,10 @@ impl Tufts {
 pub mod tests {
     use std::ops::{Range};
     use rand::{Rng};
-    use rand::distributions::{IndependentSample};
+    use rand::distributions::{Distribution, Range as RandRange};
+    use rand::rngs::SmallRng;
     use ocl::util;
-    use cmn::{self, XorShiftRng, Range as RandRange};
+    use cmn::{self};
     use cortex::{PyramidalLayer, DataCellLayer, DataCellLayerTest, CelCoords, Tufts};
 
     impl Tufts {

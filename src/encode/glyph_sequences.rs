@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
-use rand::distributions::{IndependentSample, Range};
-use rand;
+use rand::distributions::{Distribution, Range};
+use rand::{FromEntropy, rngs::SmallRng};
 use cmn::{CorticalDims, TractFrameMut};
 use map::{self, LayerAddress, AxonTags};
 use subcortex::{InputGeneratorTract, InputGeneratorLayer, /*SubcorticalNucleusLayer*/};
@@ -108,16 +108,16 @@ impl GlyphSequences {
         }
 
         let buckets = GlyphBuckets::new(label_file, image_file);
-        let mut rng = rand::weak_rng();
+        let mut rng = SmallRng::from_entropy();
         let mut sequences = Vec::with_capacity(seq_count);
 
         // Build sequences of bucket_ids:
         for _ in 0..seq_count {
-            let seq_len = Range::new(seq_lens.0, seq_lens.1 + 1).ind_sample(&mut rng);
+            let seq_len = Range::new(seq_lens.0, seq_lens.1 + 1).sample(&mut rng);
             let mut seq = Vec::<usize>::with_capacity(seq_len);
 
             for _ in 0..seq_len {
-                let glyph_id = Range::new(0, buckets.count()).ind_sample(&mut rng);
+                let glyph_id = Range::new(0, buckets.count()).sample(&mut rng);
                 seq.push(glyph_id);
             }
 

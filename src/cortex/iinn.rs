@@ -1,5 +1,5 @@
-use rand::Rng;
-use cmn::{self, CmnResult};
+use rand::{Rng, FromEntropy, rngs::SmallRng};
+use cmn::{CmnResult};
 use map::{AreaMap, LayerAddress, ExecutionGraph, CommandRelations, CorticalBuffer, CellScheme, CommandUid};
 use ocl::{Kernel, ProQue, SpatialDims, Event};
 use cortex::{AxonSpace, ControlCellLayer, DataCellLayer, CorticalAreaSettings};
@@ -14,7 +14,7 @@ pub struct InhibitoryInterneuronNetwork {
     kern_inhib_passthrough: Kernel,
     exe_cmd_uid: CommandUid,
     exe_cmd_idx: usize,
-    rng: cmn::XorShiftRng,
+    rng: SmallRng,
     settings: CorticalAreaSettings,
 }
 
@@ -88,7 +88,7 @@ impl InhibitoryInterneuronNetwork {
             kern_inhib_passthrough: kern_inhib_passthrough,
             exe_cmd_uid,
             exe_cmd_idx: 0,
-            rng: cmn::weak_rng(),
+            rng: SmallRng::from_entropy(),
             settings: settings,
         })
     }

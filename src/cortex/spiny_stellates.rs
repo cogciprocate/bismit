@@ -1,7 +1,7 @@
 // #![allow(unused_imports)]
 
 // use std::collections::BTreeMap;
-use rand::Rng;
+use rand::{Rng, FromEntropy, rngs::SmallRng};
 use cmn::{self, CmnResult, CorticalDims};
 use map::{AreaMap};
 use ocl::{Kernel, ProQue, Buffer, Event, SpatialDims};
@@ -31,7 +31,7 @@ pub struct SpinyStellateLayer {
     energies: Buffer<u8>,
     activities: Buffer<u8>,
     pub dens: Dendrites,
-    rng: cmn::XorShiftRng,
+    rng: SmallRng,
     cycle_exe_cmd_uid: Option<CommandUid>,
     cycle_exe_cmd_idx: Option<usize>,
     mtp_exe_cmd_uid: Option<CommandUid>,
@@ -161,7 +161,7 @@ impl SpinyStellateLayer {
             kern_mtp: kern_mtp,
             energies,
             activities,
-            rng: cmn::weak_rng(),
+            rng: SmallRng::from_entropy(),
             dens: dens,
             cycle_exe_cmd_uid,
             cycle_exe_cmd_idx: None,
@@ -337,9 +337,10 @@ impl DataCellLayer for SpinyStellateLayer {
 pub mod tests {
     use std::ops::{Range};
     use rand::{Rng};
-    use rand::distributions::{IndependentSample};
+    use rand::distributions::{Distribution, Range as RandRange};
+    use rand::rngs::SmallRng;
     // use ocl::util;
-    use cmn::{self, XorShiftRng, Range as RandRange};
+    use cmn::{self};
     use cortex::{SpinyStellateLayer, DendritesTest, DataCellLayerTest, CelCoords};
 
     impl DataCellLayerTest for SpinyStellateLayer {
@@ -397,7 +398,7 @@ pub mod tests {
             self.print_range(None, /*print_children*/);
         }
 
-        fn rng(&mut self) -> &mut XorShiftRng {
+        fn rng(&mut self) -> &mut SmallRng {
             &mut self.rng
         }
 
@@ -406,9 +407,9 @@ pub mod tests {
             let v_range = RandRange::new(0, self.dims().v_size());
             let u_range = RandRange::new(0, self.dims().u_size());
 
-            let slc_id_lyr = slc_range.ind_sample(self.rng());
-            let v_id = v_range.ind_sample(self.rng());
-            let u_id = u_range.ind_sample(self.rng());
+            let slc_id_lyr = slc_range.sample(self.rng());
+            let v_id = v_range.sample(self.rng());
+            let u_id = u_range.sample(self.rng());
 
             let axon_slc_id = self.base_axon_slc() + slc_id_lyr;
 

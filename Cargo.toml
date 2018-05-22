@@ -40,9 +40,9 @@ failure = "*"
 
 [dependencies.ocl]
 version = "*"
-path = "../ocl/ocl"
-# git = "https://github.com/cogciprocate/ocl.git"
-# branch = "futures-0.2"
+# path = "../ocl/ocl"
+git = "https://github.com/cogciprocate/ocl"
+branch = "futures-0.2"
 # features = ["kernel_debug_sleep", "kernel_debug_print"]
 
 [dependencies.futures]

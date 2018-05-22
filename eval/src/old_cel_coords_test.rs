@@ -20,9 +20,8 @@ use vibi::bismit::{map, Result as CmnResult, Error as CmnError, Cortex, Cortical
     Thalamus, SubcorticalNucleus, SubcorticalNucleusLayer, CompletionPool, CorticalAreas, TractReceiver,
     SamplerKind, SamplerBufferKind, ReadBuffer, FutureRecv, /*FutureReadGuardVec, ReadGuardVec,*/
     CorticalSampler, FutureCorticalSamples, CorticalSamples, CellSampleIdxs,
-    CorticalLayerSampler, CorticalLayerSamples,
-    CorticalAreaTest,
-    DendritesTest, SynapsesTest, CelCoords, DenCoords, SynCoords, flywheel::Command};
+    CorticalLayerSampler, CorticalLayerSamples, CorticalAreaTest,
+    DendritesTest, SynapsesTest, CelCoords, DenCoords, SynCoords, flywheel::{Command, Request}};
 use vibi::bismit::map::*;
 use vibi::bismit::cmn::{TractFrameMut, TractDims, CorticalDims};
 use vibi::bismit::encode::{self, Vector2dWriter};
@@ -126,6 +125,7 @@ fn test_stuff(samples: &CorticalLayerSamples, focus_cels: &[FocusCell],
         cycles_complete: usize, lyr_addr: LayerAddress, /*sdrs: &QrwReadGuard<Vec<Vec<u8>>>,*/
         cursor_pos: &SeqCursorPos, next_cursor_pos: &SeqCursorPos,
         focus_layer_axon_range: (usize, usize), results: &Guard<TrialResults>) {
+    print!("S");
     let axn_states = samples.axon_states().unwrap();
     let cel_states = samples.soma_states().unwrap();
     let tft_states = samples.tuft_states().unwrap();
@@ -728,10 +728,14 @@ pub fn eval() {
         .subcortical_nucleus(eval_nucl);
 
     let cortex = cortex_builder.build().unwrap();
-
-    let controls = ::spawn_threads(cortex, PRI_AREA);
+    let controls = ::spawn_threads(cortex, PRI_AREA, false);
 
     controls.cmd_tx.send(Command::Iterate(1000)).unwrap();
+    controls.cmd_tx.send(Command::FinishQueues).unwrap();
+
+    // TODO: Wait for completion...
+
+    controls.cmd_tx.send(Command::Exit).unwrap();
 
     ::join_threads(controls)
 }

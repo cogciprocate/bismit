@@ -23,7 +23,7 @@ pub struct Minicolumns {
     activate_exe_cmd_idx: Vec<usize>,
     // kern_output: ocl::Kernel,
     // output_exe_cmd_idx: Option<usize>,
-    // rng: rand::XorShiftRng,
+    // rng: rand::SmallRng,
     pub flag_sets: Buffer<u8>,
     pub best_den_states: Buffer<u8>,
 }
@@ -172,7 +172,7 @@ impl Minicolumns {
             activate_exe_cmd_idx: activate_exe_cmd_idx,
             // kern_output: kern_output,
             // output_exe_cmd_idx: output_exe_cmd_idx,
-            // rng: rand::weak_rng(),
+            // rng: SmallRng::from_entropy(),
             flag_sets: flag_sets,
             best_den_states: best_den_states,
         })

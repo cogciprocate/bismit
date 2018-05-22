@@ -158,7 +158,7 @@ pub fn eval(sub: Option<&str>) {
     let axns = cortex.areas().by_key(PRI_AREA).unwrap().axns().states().clone();
     let area_map = cortex.areas().by_key(PRI_AREA).unwrap().area_map().clone();
 
-    let controls = ::spawn_threads(cortex, PRI_AREA);
+    let controls = ::spawn_threads(cortex, PRI_AREA, true);
 
     let params = Params { tract_buffer: in_tract_buffer, axns,
         /*l4_axns: v1_spt_lyr_buf,*/ area_map, encode_dim: ENCODE_DIMS, area_dim: AREA_DIM };

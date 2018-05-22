@@ -48,51 +48,61 @@ pub struct Controls {
     pub req_tx: Sender<Request>,
     pub res_rx: Receiver<Response>,
     pub th_flywheel: thread::JoinHandle<()>,
-    pub th_win: thread::JoinHandle<()>,
+    pub th_win: Option<thread::JoinHandle<()>>,
 }
 
 
-pub fn spawn_threads(cortex: Cortex, pri_area_name: &'static str)
+pub fn spawn_threads(cortex: Cortex, pri_area_name: &'static str, vibi: bool)
         -> Controls {
     let (command_tx, command_rx) = mpsc::channel();
     let (vibi_request_tx, vibi_request_rx) = mpsc::channel();
     let (vibi_response_tx, vibi_response_rx) = mpsc::channel();
     let vibi_command_tx = command_tx.clone();
 
-    let (spatial_request_tx, spatial_request_rx) = mpsc::channel();
-    let (spatial_response_tx, spatial_response_rx) = mpsc::channel();
-    let spatial_command_tx = command_tx;
+    let (control_request_tx, control_request_rx) = mpsc::channel();
+    let (control_response_tx, control_response_rx) = mpsc::channel();
+    let control_command_tx = command_tx;
 
     let mut flywheel = Flywheel::new(cortex, command_rx, pri_area_name);
     flywheel.add_req_res_pair(vibi_request_rx, vibi_response_tx);
-    flywheel.add_req_res_pair(spatial_request_rx, spatial_response_tx);
+    flywheel.add_req_res_pair(control_request_rx, control_response_tx);
 
     // Flywheel thread:
     let th_flywheel = thread::Builder::new().name("flywheel".to_string())
             .spawn(move || {
+        println!("Controls::spawn_threads: Spinning flywheel...");
         flywheel.spin();
     }).expect("Error creating 'flywheel' thread");
 
     // Vibi thread:
-    let th_win = thread::Builder::new().name("win".to_string()).spawn(move || {
-        println!("Opening vibi window...");
-        window::Window::open(vibi_command_tx, vibi_request_tx, vibi_response_rx);
-    }).expect("Error creating 'win' thread");
+    let th_win = if vibi {
+        Some(thread::Builder::new().name("win".to_string()).spawn(move || {
+            println!("Opening vibi window...");
+            window::Window::open(vibi_command_tx, vibi_request_tx, vibi_response_rx);
+        }).expect("Error creating 'win' thread"))
+    } else {
+        None
+    };
 
     Controls {
-        cmd_tx: spatial_command_tx,
-        req_tx: spatial_request_tx,
-        res_rx: spatial_response_rx,
+        cmd_tx: control_command_tx,
+        req_tx: control_request_tx,
+        res_rx: control_response_rx,
         th_flywheel,
         th_win,
     }
 }
 
-pub fn join_threads(controls: Controls) {
-    if let Err(e) = controls.th_win.join() {
-        println!("th_win.join(): Error: '{:?}'", e);
+pub fn join_threads(mut controls: Controls) {
+    // if let Err(e) = controls.th_win.take().join() {
+    //     println!("th_win.join(): Error: '{:?}'", e);
+    // }
+    if let Some(th_win) = controls.th_win.take() {
+        if let Err(e) = th_win.join() {
+            println!("th_win.join(): Error: '{:?}'", e);
+        }
+        println!("Vibi window closed.");
     }
-    println!("Vibi window closed.");
     if let Err(e) = controls.th_flywheel.join() {
         println!("th_flywheel.join(): Error: '{:?}'", e);
     }

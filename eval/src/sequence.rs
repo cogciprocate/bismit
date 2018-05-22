@@ -22,7 +22,7 @@ use vibi::bismit::{map, Result as CmnResult, Error as CmnError, Cortex, Cortical
     CorticalSampler, FutureCorticalSamples, CorticalSamples, CellSampleIdxs,
     CorticalLayerSampler, CorticalLayerSamples,
     CorticalAreaTest,
-    DendritesTest, SynapsesTest, CelCoords, DenCoords, SynCoords};
+    DendritesTest, SynapsesTest, CelCoords, DenCoords, SynCoords, flywheel::Command};
 use vibi::bismit::map::*;
 use vibi::bismit::cmn::{TractFrameMut, TractDims, CorticalDims};
 use vibi::bismit::encode::{self, Vector2dWriter};
@@ -405,7 +405,7 @@ pub fn eval() {
 
     let cortex = cortex_builder.build().unwrap();
 
-    let controls = ::spawn_threads(cortex, PRI_AREA);
+    let controls = ::spawn_threads(cortex, PRI_AREA, true);
 
     controls.cmd_tx.send(Command::Iterate(1000)).unwrap();
 

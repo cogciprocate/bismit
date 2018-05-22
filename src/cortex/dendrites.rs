@@ -1,7 +1,7 @@
-use rand::Rng;
+use rand::{Rng, FromEntropy, rngs::SmallRng};
 use ocl::{ProQue, SpatialDims, Buffer, Kernel, Event};
 use ocl::traits::OclPrm;
-use cmn::{self, CmnResult, CorticalDims, XorShiftRng};
+use cmn::{self, CmnResult, CorticalDims};
 use map::{AreaMap, CellScheme, ExecutionGraph, CommandRelations,
     CorticalBuffer, LayerAddress, CommandUid};
 use cortex::{AxonSpace, Synapses};
@@ -27,7 +27,7 @@ pub struct Dendrites {
     den_counts_by_tft: Vec<u32>,
     exe_cmd_uids: Vec<CommandUid>,
     exe_cmd_idxs: Vec<usize>,
-    rng: XorShiftRng,
+    rng: SmallRng,
     bypass_exe_graph: bool,
 }
 
@@ -170,7 +170,7 @@ impl Dendrites {
             den_counts_by_tft: den_counts_by_tft,
             exe_cmd_uids,
             exe_cmd_idxs,
-            rng: cmn::weak_rng(),
+            rng: SmallRng::from_entropy(),
             bypass_exe_graph,
         })
     }
@@ -255,7 +255,7 @@ pub mod tests {
     #![allow(non_snake_case, dead_code)]
     use std::ops::{Range};
     use std::fmt::{Display, Formatter, Result};
-    use rand::distributions::{IndependentSample, Range as RandRange};
+    use rand::distributions::{Distribution, Range as RandRange};
     use ocl::{util, OclPrm, Buffer};
     // use tests;
     use cmn::{CorticalDims};
@@ -311,7 +311,7 @@ pub mod tests {
 
         fn rand_den_coords(&mut self, cel_coords: CelCoords) -> DenCoords {
             let tft_id_range = RandRange::new(0, self.tft_count());
-            let tft_id = tft_id_range.ind_sample(self.syns.rng());
+            let tft_id = tft_id_range.sample(self.syns.rng());
 
             let tft_den_idz = self.den_idzs_by_tft[tft_id];
             let tft_dims = self.syns.tft_dims_by_tft()[tft_id].clone();
@@ -319,7 +319,7 @@ pub mod tests {
             // let dens_per_tft = self.den_id_range_celtft(tft_id).end;
             let dens_per_tft = tft_dims.dens_per_tft();
             let den_id_range_celtft = RandRange::new(0, dens_per_tft);
-            let den_id_celtft = den_id_range_celtft.ind_sample(self.syns.rng());
+            let den_id_celtft = den_id_range_celtft.sample(self.syns.rng());
 
             DenCoords::new(cel_coords, tft_id, tft_den_idz, tft_dims, den_id_celtft)
         }

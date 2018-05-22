@@ -1,9 +1,10 @@
 // use std::hash::{Hash, Hasher};
 use std::collections::{BTreeMap, BTreeSet};
 use std::cmp;
-use rand::distributions::{IndependentSample};
+use rand::distributions::{Distribution, Range as RandRange};
+use rand::rngs::SmallRng;
 use cortex::TuftDims;
-use cmn::{self, CmnError, CmnResult, CorticalDims, SliceDims, XorShiftRng, Range as RandRange};
+use cmn::{self, CmnError, CmnResult, CorticalDims, SliceDims};
 use map::{AreaMap, AxonTopology, TuftScheme};
 use SrcOfs;
 
@@ -444,13 +445,13 @@ impl SynSrcSlices {
     // [FIXME]: TODO: Bounds check ofs against v and u id -- will need to
     // figure out how to deconstruct this from the syn_idx or something.
     //
-    pub fn gen_src(&self, tft_id: usize, rng: &mut XorShiftRng) -> SynSrc {
+    pub fn gen_src(&self, tft_id: usize, rng: &mut SmallRng) -> SynSrc {
         debug_assert!(tft_id < self.slices_by_tft.len());
 
         let src_slices = unsafe { self.slices_by_tft.get_unchecked(tft_id) };
 
         let &slc_id = unsafe {
-            let rand_slc_id_lyr = src_slices.id_pool_ranges.ind_sample(rng);
+            let rand_slc_id_lyr = src_slices.id_pool_ranges.sample(rng);
             src_slices.id_pools.get_unchecked(rand_slc_id_lyr)
         };
 
@@ -462,21 +463,21 @@ impl SynSrcSlices {
             OfsPool::Nonspatial(ref v_rr, ref u_rr) => {
                 SynSrc {
                     slc_id: slc_id,
-                    v_ofs: v_rr.ind_sample(rng),
-                    u_ofs: u_rr.ind_sample(rng),
+                    v_ofs: v_rr.sample(rng),
+                    u_ofs: u_rr.sample(rng),
                     strength: 0,
                 }
             },
 
             OfsPool::Spatial { ref offs, ref ofs_idx_range } => {
-                let (v_ofs, u_ofs) = offs[ofs_idx_range.ind_sample(rng)];
+                let (v_ofs, u_ofs) = offs[ofs_idx_range.sample(rng)];
 
                 let syn_reaches = slc_info.scaled_syn_reaches();
 
                 let syn_str_intensity = (((syn_reaches.0 as i32 - v_ofs.abs() as i32) +
                         (syn_reaches.1 as i32 - u_ofs.abs() as i32)) >> INTENSITY_REDUCTION_L2) as i8;
 
-                let strength = syn_str_intensity * src_slices.str_ranges.ind_sample(rng);
+                let strength = syn_str_intensity * src_slices.str_ranges.sample(rng);
 
                 SynSrc {
                     slc_id: slc_id,

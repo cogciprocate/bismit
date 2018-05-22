@@ -2,6 +2,7 @@
 
 use std::collections::{HashSet, BTreeMap};
 use std::ops::Range;
+use rand::rngs::SmallRng;
 use futures::FutureExt;
 use ocl::{flags, Device, ProQue, Context, Buffer, Event, Queue, RwVec};
 use ocl::core::CommandQueueProperties;
@@ -1353,8 +1354,8 @@ impl Aux {
 
 #[cfg(any(test, feature = "eval"))]
 pub mod tests {
-    use rand;
-    use rand::distributions::{IndependentSample, Range as RandRange};
+    use rand::FromEntropy;
+    use rand::distributions::{Distribution, Range as RandRange};
 
     use super::*;
     use cortex::{AxonSpaceTest, CelCoords, DataCellLayerTest};
@@ -1403,11 +1404,11 @@ pub mod tests {
             let v_ofs_range = RandRange::new(-8 as SrcOfs, 9);
             let u_ofs_range = RandRange::new(-8 as SrcOfs, 9);
 
-            let mut rng = rand::weak_rng();
+            let mut rng = SmallRng::from_entropy();
 
             for _ in 0..50 {
-                let v_ofs = v_ofs_range.ind_sample(&mut rng);
-                let u_ofs = u_ofs_range.ind_sample(&mut rng);
+                let v_ofs = v_ofs_range.sample(&mut rng);
+                let u_ofs = u_ofs_range.sample(&mut rng);
 
                 if v_ofs | u_ofs == 0 {
                     continue;
@@ -1461,8 +1462,8 @@ pub mod tests {
 
         fn activate_axon(&mut self, idx: u32) {
             self.finish_queues();
-            let mut rng = rand::weak_rng();
-            let val = RandRange::new(200, 255).ind_sample(&mut rng);
+            let mut rng = SmallRng::from_entropy();
+            let val = RandRange::new(200, 255).sample(&mut rng);
             self.axns.write_to_axon(val, idx);
         }
 
