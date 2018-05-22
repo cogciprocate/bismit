@@ -74,6 +74,7 @@ pub enum Command {
     Iterate(u32),
     Stop,
     Exit,
+    ExitAfterCycling,
 }
 
 
@@ -280,9 +281,10 @@ impl Flywheel {
         }
     }
 
+    /// Cycle loop.
     fn cycle_loop(&mut self) -> Command {
         // println!("Flywheel::cycle_loop: Looping {} times...", self.cycle_iters_max);
-
+        let mut exit_after_cycling = false;
         loop {
             if (self.cycle_iters_max != 0) && (self.status.cur_cycle.0 >= self.cycle_iters_max) { break; }
 
@@ -299,6 +301,7 @@ impl Flywheel {
                 Ok(c) => match c {
                     Command::None => (),
                     Command::Stop => return Command::Stop,
+                    Command::ExitAfterCycling => exit_after_cycling = true,
                     _ => return c,
                 },
                 Err(e) => match e {
@@ -314,7 +317,11 @@ impl Flywheel {
             self.fulfill_requests();
         }
 
-        Command::None
+        if exit_after_cycling {
+            Command::Exit
+        } else {
+            Command::None
+        }
     }
 
     fn fulfill_requests(&mut self) {

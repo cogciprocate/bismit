@@ -11,8 +11,8 @@ use std::mem;
 use std::collections::{HashMap, BTreeMap};
 use std::ops::Range;
 use smallvec::SmallVec;
-use rand::{self, XorShiftRng};
-use rand::distributions::{Range as RandRange, IndependentSample};
+use rand::{self, FromEntropy, rngs::SmallRng};
+use rand::distributions::{Range as RandRange, Distribution};
 use qutex::{Qutex, Guard, QrwLock, ReadGuard as QrwReadGuard};
 use vibi::bismit::futures::{future, Future, FutureExt, Poll, Async};
 use vibi::bismit::ocl::{FutureReadGuard, ReadGuard};
@@ -731,11 +731,7 @@ pub fn eval() {
     let controls = ::spawn_threads(cortex, PRI_AREA, false);
 
     controls.cmd_tx.send(Command::Iterate(1000)).unwrap();
-    controls.cmd_tx.send(Command::FinishQueues).unwrap();
-
-    // TODO: Wait for completion...
-
-    controls.cmd_tx.send(Command::Exit).unwrap();
+    controls.cmd_tx.send(Command::ExitAfterCycling).unwrap();
 
     ::join_threads(controls)
 }

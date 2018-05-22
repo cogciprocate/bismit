@@ -2,8 +2,8 @@
 
 use std::mem;
 use std::collections::{BTreeMap, HashMap};
-use rand::{self, XorShiftRng};
-use rand::distributions::{Range, IndependentSample};
+use rand::{self, FromEntropy, rngs::SmallRng};
+use rand::distributions::{Range, Distribution};
 use qutex::QrwLock;
 use vibi::bismit::futures::Future;
 use vibi::bismit::map::*;
@@ -390,7 +390,7 @@ fn track_pattern_activity(controls: &Controls, params: Params, buffers: Buffers)
     let cell_count = (params.encode_dim * params.encode_dim) as usize;
     let sdr_active_count = cell_count / SPARSITY;
 
-    let mut rng = rand::weak_rng();
+    let mut rng = SmallRng::from_entropy();
 
     // Produce randomized indexes:
     let pattern_indices: Vec<_> = (0..pattern_count).map(|_| {
@@ -401,7 +401,7 @@ fn track_pattern_activity(controls: &Controls, params: Params, buffers: Buffers)
     let sdrs: Vec<_> = pattern_indices.iter().map(|axn_idxs| {
         let mut sdr = vec![0u8; cell_count];
         for &axn_idx in axn_idxs.iter() {
-            sdr[axn_idx] = Range::new(96, 160).ind_sample(&mut rng);
+            sdr[axn_idx] = Range::new(96, 160).sample(&mut rng);
         }
         sdr
     }).collect();
@@ -437,7 +437,7 @@ fn track_pattern_activity(controls: &Controls, params: Params, buffers: Buffers)
     // let pattern_watch_list = vec![1, 7, 15];
     let mut trials = TrialResults::new(pattern_watch_list);
 
-    let mut rng = rand::weak_rng();
+    let mut rng = SmallRng::from_entropy();
     let mut exiting = false;
     let mut cycle_count_running_ttl = 0usize;
 
@@ -457,7 +457,7 @@ fn track_pattern_activity(controls: &Controls, params: Params, buffers: Buffers)
                     i % pattern_count
                 } else {
                     // Write a random SDR:
-                    Range::new(0, pattern_count).ind_sample(&mut rng)
+                    Range::new(0, pattern_count).sample(&mut rng)
                 };
 
                 let mut guard = params.tract_buffer.clone().write().wait().unwrap();
@@ -776,7 +776,7 @@ struct EvalSpatial {
     current_trial_data: TrialData,
     trial_results: TrialResults,
     completion_pool_remote: CompletionPoolRemote,
-    rng: XorShiftRng,
+    rng: SmallRng,
     samplers: Option<Samplers>,
     current_pattern_idx: usize,
 }
@@ -820,7 +820,7 @@ impl EvalSpatial {
         let cell_count = (ENCODE_DIM * ENCODE_DIM) as usize;
         let sdr_active_count = cell_count / SPARSITY;
 
-        let mut rng = rand::weak_rng();
+        let mut rng = SmallRng::from_entropy();
 
         // Produce randomized indexes:
         let pattern_indices: Vec<_> = (0..pattern_count).map(|_| {
@@ -831,7 +831,7 @@ impl EvalSpatial {
         let input_sdrs: Vec<_> = pattern_indices.iter().map(|axn_idxs| {
             let mut sdr = vec![0u8; cell_count];
             for &axn_idx in axn_idxs.iter() {
-                sdr[axn_idx] = Range::new(96, 160).ind_sample(&mut rng);
+                sdr[axn_idx] = Range::new(96, 160).sample(&mut rng);
             }
             sdr
         }).collect();
@@ -923,7 +923,7 @@ impl SubcorticalNucleus for EvalSpatial {
             self.trial_iter.global_cycle_idx % self.pattern_count
         } else {
             // Write a random SDR:
-            Range::new(0, self.pattern_count).ind_sample(&mut self.rng)
+            Range::new(0, self.pattern_count).sample(&mut self.rng)
         };
 
         let pattern_idx = self.current_pattern_idx;

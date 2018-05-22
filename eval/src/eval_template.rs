@@ -8,8 +8,8 @@
 
 // use std::mem;
 use std::collections::{HashMap};
-use rand::{self, XorShiftRng};
-use rand::distributions::{Range, IndependentSample};
+use rand::{self, FromEntropy, rngs::SmallRng};
+use rand::distributions::{Range, Distribution};
 use qutex::QrwLock;
 use vibi::bismit::futures::Future;
 use vibi::bismit::{map, Result as CmnResult, Cortex, CorticalAreaSettings, Thalamus,
@@ -113,7 +113,7 @@ impl SubcorticalNucleus for EvalSequence {
             self.trial_iter.global_cycle_idx % self.sdrs.pattern_count
         } else {
             // Choose a random SDR:
-            Range::new(0, self.sdrs.pattern_count).ind_sample(&mut self.sdrs.rng)
+            Range::new(0, self.sdrs.pattern_count).sample(&mut self.sdrs.rng)
         };
 
         // Write sdr to pathway:

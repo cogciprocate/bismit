@@ -17,12 +17,12 @@ mod hexdraw;
 mod sequence;
 mod motor;
 mod sensory;
-mod old_cel_coords_test;
+mod old_test;
 
 use std::thread;
 use std::sync::mpsc::{self, Sender, Receiver};
-use rand::XorShiftRng;
-use rand::distributions::{Range, IndependentSample};
+use rand::{FromEntropy, rngs::SmallRng};
+use rand::distributions::{Range, Distribution};
 // use vibi::bismit::futures::executor;
 // use qutex::QrwLock;
 use vibi::window;
@@ -138,7 +138,7 @@ fn main() {
         "motor" => motor::eval(),
         "sensory" => sensory::eval(),
         "sequence" => sequence::eval(),
-        "old_cel_coords_test" => old_cel_coords_test::eval(),
+        "old_test" => old_test::eval(),
         e @ _ => println!("Unknown evaluation specified: {}", e),
     }
 
@@ -405,7 +405,7 @@ pub struct Sdrs {
     pub dims: TractDims,
     pub indices: Vec<Vec<usize>>,
     pub sdrs: Vec<Vec<u8>>,
-    pub rng: XorShiftRng,
+    pub rng: SmallRng,
 }
 
 impl Sdrs {
@@ -417,7 +417,7 @@ impl Sdrs {
         let cell_count = dims.to_len();
         let sdr_active_count = cell_count / SPARSITY;
 
-        let mut rng = rand::weak_rng();
+        let mut rng = SmallRng::from_entropy();
 
         // Produce randomized indexes:
         let pattern_indices: Vec<_> = (0..pattern_count).map(|_| {
@@ -428,7 +428,7 @@ impl Sdrs {
         let sdrs: Vec<_> = pattern_indices.iter().map(|axn_idxs| {
             let mut sdr = vec![0u8; cell_count];
             for &axn_idx in axn_idxs.iter() {
-                sdr[axn_idx] = Range::new(1, 256).ind_sample(&mut rng) as u8;
+                sdr[axn_idx] = Range::new(1, 256).sample(&mut rng) as u8;
             }
             sdr
         }).collect();
@@ -493,7 +493,7 @@ pub struct SeqCursor {
     next_seq_idx: usize,
     cur_seq_item_idx: usize,
     next_seq_item_idx: usize,
-    rng: XorShiftRng,
+    rng: SmallRng,
 }
 
 impl SeqCursor {
@@ -509,19 +509,19 @@ impl SeqCursor {
             ('seq_lens') invalid. High end must at least be equal to low end: '{:?}'.",
                 seq_lens);
 
-        let mut rng = rand::weak_rng();
+        let mut rng = SmallRng::from_entropy();
         let mut sequences = Vec::with_capacity(seq_count);
 
         // Build sequences of source indexes:
         for _ in 0..seq_count {
             let mut seq_len = 0;
             while seq_len == 0 {
-                seq_len = Range::new(seq_lens.0, seq_lens.1 + 1).ind_sample(&mut rng);
+                seq_len = Range::new(seq_lens.0, seq_lens.1 + 1).sample(&mut rng);
             }
             let mut seq = Vec::<usize>::with_capacity(seq_len);
 
             for _ in 0..seq_len {
-                let src_idx = Range::new(0, src_idx_count).ind_sample(&mut rng);
+                let src_idx = Range::new(0, src_idx_count).sample(&mut rng);
                 seq.push(src_idx);
             }
 
@@ -529,10 +529,10 @@ impl SeqCursor {
         }
 
         // Initial sequence index (randomized for fun):
-        let cur_seq_idx = Range::new(0, sequences.len()).ind_sample(&mut rng);
+        let cur_seq_idx = Range::new(0, sequences.len()).sample(&mut rng);
 
         // Next sequence index:
-        let next_seq_idx = Range::new(0, sequences.len()).ind_sample(&mut rng);
+        let next_seq_idx = Range::new(0, sequences.len()).sample(&mut rng);
 
         SeqCursor {
             sequences: sequences,
@@ -565,7 +565,7 @@ impl SeqCursor {
 
         if self.next_seq_item_idx >= self.sequences[self.cur_seq_idx].len() {
             self.next_seq_idx = Range::new(0, self.sequences.len())
-                .ind_sample(&mut self.rng);
+                .sample(&mut self.rng);
             self.next_seq_item_idx = 0;
         }
         self.sequences[self.cur_seq_idx][self.cur_seq_item_idx]
