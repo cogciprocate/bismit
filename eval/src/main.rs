@@ -402,8 +402,9 @@ impl Layer {
 #[derive(Debug)]
 pub struct Sdrs {
     pub pattern_count: usize,
+    pub active_cell_count: usize,
     pub dims: TractDims,
-    pub indices: Vec<Vec<usize>>,
+    pub indices: Vec<Vec<u32>>,
     pub sdrs: Vec<Vec<u8>>,
     pub rng: SmallRng,
 }
@@ -415,26 +416,27 @@ impl Sdrs {
         const SPARSITY: usize = 48;
         // let pattern_count = 300;
         let cell_count = dims.to_len();
-        let sdr_active_count = cell_count / SPARSITY;
+        let active_cell_count = cell_count / SPARSITY;
 
         let mut rng = SmallRng::from_entropy();
 
         // Produce randomized indexes:
         let pattern_indices: Vec<_> = (0..pattern_count).map(|_| {
-            encode::gen_axn_idxs(&mut rng, sdr_active_count, cell_count)
+            encode::gen_axn_idxs(&mut rng, active_cell_count, cell_count)
         }).collect();
 
         // Create sdr from randomized indexes:
         let sdrs: Vec<_> = pattern_indices.iter().map(|axn_idxs| {
             let mut sdr = vec![0u8; cell_count];
             for &axn_idx in axn_idxs.iter() {
-                sdr[axn_idx] = Range::new(1, 256).sample(&mut rng) as u8;
+                sdr[axn_idx as usize] = Range::new(1, 256).sample(&mut rng) as u8;
             }
             sdr
         }).collect();
 
         Sdrs {
             pattern_count,
+            active_cell_count,
             dims,
             indices: pattern_indices,
             sdrs,
@@ -471,11 +473,17 @@ impl Sdrs {
 
 
 /// A sequence cursor position.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct SeqCursorPos {
     seq_idx: usize,
     seq_item_idx: usize,
     pattern_idx: usize,
+}
+
+impl Default for SeqCursorPos {
+    fn default() -> SeqCursorPos {
+        SeqCursorPos { seq_idx: 0, seq_item_idx: 0, pattern_idx: 0 }
+    }
 }
 
 

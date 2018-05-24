@@ -91,7 +91,7 @@ impl EvalSensory {
         let input_sdrs: Vec<_> = pattern_indices.iter().map(|axn_idxs| {
             let mut sdr = vec![0u8; cell_count];
             for &axn_idx in axn_idxs.iter() {
-                sdr[axn_idx] = Range::new(96, 160).sample(&mut rng);
+                sdr[axn_idx as usize] = Range::new(96, 160).sample(&mut rng);
             }
             sdr
         }).collect();

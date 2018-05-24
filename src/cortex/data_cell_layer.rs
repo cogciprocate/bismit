@@ -318,6 +318,13 @@ pub mod tests {
             self.idx
         }
 
+        /// Returns the index of the cell in the 0th slice of the layer with
+        /// the same `u_id` and `v_id`.
+        pub fn col_id(&self) -> u32 {
+            cmn::cel_idx_3d(self.layer.depth, 0, self.layer.slice_dims().v_size(),
+                self.v_id, self.layer.slice_dims().u_size(), self.u_id)
+        }
+
         /// Returns the index of the cell's axon within axon space.
         pub fn axon_idx(&self) -> u32 {
             // Just look this up instead now:

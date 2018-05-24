@@ -4,7 +4,7 @@ use rand::{FromEntropy, rngs::SmallRng,
 use cmn::{TractFrameMut, TractDims};
 use encode::ScalarEncodable;
 
-type TractAxonIdx = usize;
+type TractAxonIdx = u32;
 
 // Inverse factor of SDR columns to activate (SDR_TTL / SPARSITY = SDR_ACTIVE):
 const SPARSITY: usize = 48;
@@ -13,7 +13,7 @@ const AXON_VALUE: u8 = 127;
 
 #[inline]
 pub fn gen_axn_idxs(rng: &mut SmallRng, active_count: usize, sdr_len: usize) -> Vec<TractAxonIdx> {
-    let range = RandRange::new(0, sdr_len);
+    let range = RandRange::new(0, sdr_len as TractAxonIdx);
     (0..active_count).map(|_| range.sample(rng)).collect()
 }
 
@@ -21,14 +21,14 @@ pub fn gen_axn_idxs(rng: &mut SmallRng, active_count: usize, sdr_len: usize) -> 
 #[inline]
 #[allow(dead_code)]
 pub fn write_rand_subset_linear(contrib_count: usize, rev: bool, _: usize,
-        indices: &[usize], _: &mut SmallRng, tar: &mut [u8])
+        indices: &[TractAxonIdx], _: &mut SmallRng, tar: &mut [u8])
 {
-    fn write(idx_idx: usize, indices: &[usize], tar: &mut [u8]) {
+    fn write(idx_idx: usize, indices: &[TractAxonIdx], tar: &mut [u8]) {
         unsafe {
             let tract_idx = *indices.get_unchecked(idx_idx);
-            debug_assert!(tract_idx < tar.len());
+            debug_assert!((tract_idx as usize) < tar.len());
             // *tar.get_unchecked_mut(tract_idx) = 64 + (idx_idx & 63) as u8;
-            *tar.get_unchecked_mut(tract_idx) = 128;
+            *tar.get_unchecked_mut(tract_idx as usize) = 128;
         }
     }
 
@@ -46,9 +46,8 @@ pub fn write_rand_subset_linear(contrib_count: usize, rev: bool, _: usize,
 /// Writes to randomized indices from the `indices` set.
 #[inline]
 #[allow(dead_code)]
-pub fn write_rand_subset_stochastic(subset_count: usize, set_count_ttl: usize, indices: &[usize],
-        rng: &mut SmallRng, tar: &mut [u8])
-{
+pub fn write_rand_subset_stochastic(subset_count: usize, set_count_ttl: usize,
+        indices: &[TractAxonIdx], rng: &mut SmallRng, tar: &mut [u8]) {
     let idx_range = RandRange::new(0, set_count_ttl);
 
     for _ in 0..subset_count {
@@ -56,8 +55,8 @@ pub fn write_rand_subset_stochastic(subset_count: usize, set_count_ttl: usize, i
 
         unsafe {
             let tract_idx = *indices.get_unchecked(idx_idx);
-            debug_assert!(tract_idx < tar.len());
-            *tar.get_unchecked_mut(tract_idx) = 96 + (idx_idx & 63) as u8;
+            debug_assert!((tract_idx as usize) < tar.len());
+            *tar.get_unchecked_mut(tract_idx as usize) = 96 + (idx_idx & 63) as u8;
         }
     }
 }
@@ -120,7 +119,7 @@ impl<T: ScalarEncodable> ScalarSdrWriter<T> {
         let sdrs: Vec<_> = waypoint_indices.iter().map(|axn_idxs| {
                 let mut sdr = vec![0u8; sdr_len];
                 for &axn_idx in axn_idxs.iter() {
-                    sdr[axn_idx] = AXON_VALUE;
+                    sdr[axn_idx as usize] = AXON_VALUE;
                 }
                 sdr
             }).collect();

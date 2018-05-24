@@ -6,6 +6,7 @@
 
 #![allow(dead_code, unused_imports, unused_variables)]
 
+use std::collections::BTreeSet;
 use std::sync::Arc;
 use std::mem;
 use std::collections::{HashMap, BTreeMap};
@@ -21,7 +22,7 @@ use vibi::bismit::{map, Result as CmnResult, Error as CmnError, Cortex, Cortical
     SamplerKind, SamplerBufferKind, ReadBuffer, FutureRecv, /*FutureReadGuardVec, ReadGuardVec,*/
     CorticalSampler, FutureCorticalSamples, CorticalSamples, CellSampleIdxs,
     CorticalLayerSampler, CorticalLayerSamples,
-    CorticalAreaTest,
+    CorticalAreaTest, SlcId,
     DendritesTest, SynapsesTest, CelCoords, DenCoords, SynCoords, flywheel::Command};
 use vibi::bismit::map::*;
 use vibi::bismit::cmn::{TractFrameMut, TractDims, CorticalDims};
@@ -38,6 +39,13 @@ const AREA_DIM: u32 = 48;
 const SEQUENTIAL_SDR: bool = true;
 
 
+#[derive(Debug)]
+enum Phase {
+    Init,
+    Run,
+    Compare,
+}
+
 
 /// A trial result.
 #[derive(Clone, Debug)]
@@ -52,22 +60,73 @@ struct State {
     /// A list of result for each item index in an SDR sequence.
     seq_item_results: Vec<Vec<TrialResult>>,
     sdrs: Arc<Sdrs>,
+    phase: Phase,
+    focus: (SeqCursorPos, SeqCursorPos),
+    // focus.1 cell coords:
+    predictor_cells: Vec<(SlcId, u32, u32)>,
 }
 
 impl State {
     pub fn new(max_seq_len: usize, sdrs: Arc<Sdrs>) -> State {
+        // let predictor_cells = Vec::with_capacity(sdrs.active_cell_count);
+
         State {
             seq_item_results: vec![Vec::with_capacity(10000); max_seq_len],
             sdrs,
+            phase: Phase::Init,
+            focus: (SeqCursorPos::default(), SeqCursorPos::default()),
+            predictor_cells: Vec::new(),
         }
     }
 
+    fn init(&mut self, samples: &CorticalLayerSamples) {
+        // Create a set for efficiency (could be hash or btree):
+        let focus_1_set: BTreeSet<u32> = self.sdrs.indices[self.focus.1.pattern_idx].iter()
+            .map(|&idx| idx).collect();
+
+        // Allocate:
+        self.predictor_cells = Vec::with_capacity(samples.map().dims().depth() as usize *
+            self.sdrs.active_cell_count);
+
+        for cell in samples.cells(.., .., ..) {
+            let col_id = cell.map().col_id();
+            // Determine the set of cells which could eventually learn to
+            // become 'predictive' based on step[0] input. Only a fraction
+            // (1/depth) of the cells *should* become predictors over time.
+            if focus_1_set.contains(&col_id) {
+                print!("[s:{}, v:{}, u:{} / col:{}]", cell.map().slc_id_lyr(), cell.map().v_id(),
+                    cell.map().u_id(), col_id);
+                self.predictor_cells.push((cell.map().slc_id_lyr(), cell.map().v_id(),
+                    cell.map().u_id()));
+            }
+        }
+        println!("\nPredictor cell count: {} / {}", self.predictor_cells.len(),
+            self.predictor_cells.capacity());
+
+
+        // Check the strength of the PROXIMAL focus_1 synapses (only one per cell);
+    }
+
     /// Checks stuff.
-    fn check_stuff(&mut self, samples: &CorticalLayerSamples, cycle_counter: usize,
-            cursor_pos: &SeqCursorPos, next_cursor_pos: &SeqCursorPos) {
-        if cycle_counter % 200 == 0 { println!("Yo."); }
+    fn cycle(&mut self, samples: &CorticalLayerSamples, cycle_counter: usize,
+            cursor_pos: &SeqCursorPos, cursor_pos_next: &SeqCursorPos) {
+        if cycle_counter % 200 == 0 { println!("{} cycles enqueued.", cycle_counter); }
 
+        match cycle_counter {
+            0 => self.phase = Phase::Init,
+            1 => self.phase = Phase::Run,
+            200 => self.phase = Phase::Compare,
+            _ => (),
+        }
 
+        match self.phase {
+            Phase::Init => {
+                self.focus = (cursor_pos.clone(), cursor_pos_next.clone());
+                self.init(samples)
+            },
+            Phase::Run => (),
+            Phase::Compare => (),
+        }
     }
 }
 
@@ -239,7 +298,7 @@ impl SubcorticalNucleus for EvalSequence {
         let future_recv = self.sampler.as_ref().unwrap().recv()
             .join(self.state.clone().lock().err_into())
             .map(move |(samples, mut state)| {
-                state.check_stuff(&samples, cycle_counter, &cursor_pos,
+                state.cycle(&samples, cycle_counter, &cursor_pos,
                     &next_cursor_pos);
             })
             .map_err(|err| panic!("{}", err));
@@ -405,9 +464,10 @@ pub fn eval() {
 
     let cortex = cortex_builder.build().unwrap();
 
-    let controls = ::spawn_threads(cortex, PRI_AREA, true);
+    let controls = ::spawn_threads(cortex, PRI_AREA, false);
 
     controls.cmd_tx.send(Command::Iterate(1000)).unwrap();
+    controls.cmd_tx.send(Command::ExitAfterCycling).unwrap();
 
     ::join_threads(controls)
 }
