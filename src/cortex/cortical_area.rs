@@ -1238,6 +1238,16 @@ impl CorticalArea {
                 };
                 self.sampler_rx_single_i8(len, cmd_srcs, kind.clone(), None, backpressure)
             },
+            SamplerKind::SynSrcSlcIds(lyr_addr) => {
+                let (len, cmd_srcs) = {
+                    let lyr = lyr(&self.data_layers, lyr_addr);
+                    let srcs = (0..lyr.tft_count()).map(|tft_id| {
+                        CorticalBuffer::data_syn_tft(lyr.dens().syns().src_slc_ids(), lyr_addr, tft_id)
+                    }).collect();
+                    (lyr.dens().syns().src_slc_ids().len(), srcs)
+                };
+                self.sampler_rx_single_u8(len, cmd_srcs, kind.clone(), None, backpressure)
+            },
             SamplerKind::SynSrcColVOffs(lyr_addr) => {
                 let (len, cmd_srcs) = {
                     let lyr = lyr(&self.data_layers, lyr_addr);
@@ -1269,7 +1279,7 @@ impl CorticalArea {
                 self.sampler_rx_single_u8(len, cmd_srcs, kind.clone(), None, backpressure)
             },
 
-            _ => unimplemented!(),
+            sk @ _ => panic!("Unknown sampler kind: {:?}", sk),
         }
     }
 

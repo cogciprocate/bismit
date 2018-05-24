@@ -44,6 +44,7 @@ enum Phase {
     Init,
     Run,
     Compare,
+    Void,
 }
 
 
@@ -63,52 +64,105 @@ struct State {
     phase: Phase,
     focus: (SeqCursorPos, SeqCursorPos),
     // focus.1 cell coords:
-    predictor_cells: Vec<(SlcId, u32, u32)>,
+    poss_pred_cells: Vec<(SlcId, u32, u32)>,
+    // focus.1 (idx in `poss_pred_cells`, den_id, syn_id, init_strength):
+    poss_pred_cells_syns: Vec<(usize, u32, u32, i8)>,
 }
 
 impl State {
     pub fn new(max_seq_len: usize, sdrs: Arc<Sdrs>) -> State {
-        // let predictor_cells = Vec::with_capacity(sdrs.active_cell_count);
+        // let poss_pred_cells = Vec::with_capacity(sdrs.active_cell_count);
 
         State {
             seq_item_results: vec![Vec::with_capacity(10000); max_seq_len],
             sdrs,
             phase: Phase::Init,
             focus: (SeqCursorPos::default(), SeqCursorPos::default()),
-            predictor_cells: Vec::new(),
+            poss_pred_cells: Vec::new(),
+            poss_pred_cells_syns: Vec::new(),
         }
     }
 
+    /// Initialize stuff.
     fn init(&mut self, samples: &CorticalLayerSamples) {
-        // Create a set for efficiency (could be hash or btree):
+        // Create sets for lookup efficiency (could be hash or btree):
+        let focus_0_set: BTreeSet<u32> = self.sdrs.indices[self.focus.0.pattern_idx].iter()
+            .map(|&idx| idx).collect();
         let focus_1_set: BTreeSet<u32> = self.sdrs.indices[self.focus.1.pattern_idx].iter()
             .map(|&idx| idx).collect();
 
         // Allocate:
-        self.predictor_cells = Vec::with_capacity(samples.map().dims().depth() as usize *
+        self.poss_pred_cells = Vec::with_capacity(samples.map().dims().depth() as usize *
             self.sdrs.active_cell_count);
+        self.poss_pred_cells_syns = Vec::with_capacity(samples.map().dims().depth() as usize *
+            self.sdrs.active_cell_count * 4);
 
-        for cell in samples.cells(.., .., ..) {
-            let col_id = cell.map().col_id();
-            // Determine the set of cells which could eventually learn to
-            // become 'predictive' based on step[0] input. Only a fraction
-            // (1/depth) of the cells *should* become predictors over time.
-            if focus_1_set.contains(&col_id) {
-                print!("[s:{}, v:{}, u:{} / col:{}]", cell.map().slc_id_lyr(), cell.map().v_id(),
-                    cell.map().u_id(), col_id);
-                self.predictor_cells.push((cell.map().slc_id_lyr(), cell.map().v_id(),
-                    cell.map().u_id()));
+        let col_count = samples.map().dims().columns();
+
+        println!("Possible predictive cells:");
+
+        // Determine the set of cells which could eventually learn to become
+        // 'predictive' based on step[0] input. Only a fraction (1/depth) of
+        // the cells *should* become predictors over time.
+        for cell in samples.cells(.., .., ..).filter(|c| focus_1_set.contains(&c.map().col_id())) {
+            let pp_cel_idx = self.poss_pred_cells.len();
+            self.poss_pred_cells.push((cell.map().slc_id_lyr(), cell.map().v_id(),
+                cell.map().u_id()));
+
+            let mut pred_syn_count = 0;
+
+            // Determine which distal synapses are targeted by step[1]
+            // input cells.
+            for den in cell.tuft_distal().unwrap().dendrites(..) {
+                // Filter synapses with source axons belonging to cells within
+                // one of the step[0] columns. Those synapses will have just
+                // been active when step[1] cells become active.
+                for syn in den.synapses(..).filter(|s| {
+                        match s.src_axon_idx() {
+                            Ok(idx) => {
+                                let col_id = s.src_axon_idx().unwrap() % col_count;
+                                focus_0_set.contains(&col_id)
+                            },
+                            Err(_) => false,
+                        } }) {
+                    let syn_info = (pp_cel_idx, den.map().den_id(), syn.map().syn_id(), syn.strength());
+                    self.poss_pred_cells_syns.push(syn_info);
+                    pred_syn_count += 1;
+                }
             }
+
+            print!("[s:{}, v:{}, u:{} | col:{}, syns: {}]", cell.map().slc_id_lyr(),
+                cell.map().v_id(), cell.map().u_id(), cell.map().col_id(), pred_syn_count);
+
+            // TODO: Check the strength of the PROXIMAL focus_1 synapses (only
+            // one per cell) and possibly set it > 0 for the purposes of this
+            // evaluation (as a shortcut). Also make sure that it increases
+            // naturally (below). UPDATE: strengths start at zero -- probably
+            // don't worry about it for now.
         }
-        println!("\nPredictor cell count: {} / {}", self.predictor_cells.len(),
-            self.predictor_cells.capacity());
 
+        println!("\nPredictor cell count: {} / {}", self.poss_pred_cells.len(),
+            self.poss_pred_cells.capacity());
+    }
 
-        // Check the strength of the PROXIMAL focus_1 synapses (only one per cell);
+    /// Compares stuff.
+    fn compare(&mut self, samples: &CorticalLayerSamples) {
+        // Check the strength of the PROXIMAL focus_1 synapses (only one per
+        // cell) to make sure that they have become solid.
+        println!("Proximal synapse strengths:");
+        for &(ppc_idx, den_id, syn_id, str_init) in self.poss_pred_cells_syns.iter() {
+            let (slc, v, u) = self.poss_pred_cells[ppc_idx];
+            let prx_syn_str = samples.cell(slc, v, u).tuft_proximal().unwrap()
+                .dendrite(0).synapse(0).strength();
+            print!("[{}]", prx_syn_str);
+        }
+        println!();
+
+        // TODO: Check that `poss_pred_cells_syns` have increased in strength.
     }
 
     /// Checks stuff.
-    fn cycle(&mut self, samples: &CorticalLayerSamples, cycle_counter: usize,
+    fn cycle(&mut self, cycle_counter: usize, samples: &CorticalLayerSamples,
             cursor_pos: &SeqCursorPos, cursor_pos_next: &SeqCursorPos) {
         if cycle_counter % 200 == 0 { println!("{} cycles enqueued.", cycle_counter); }
 
@@ -116,7 +170,7 @@ impl State {
             0 => self.phase = Phase::Init,
             1 => self.phase = Phase::Run,
             200 => self.phase = Phase::Compare,
-            _ => (),
+            _ => self.phase = Phase::Void,
         }
 
         match self.phase {
@@ -125,7 +179,8 @@ impl State {
                 self.init(samples)
             },
             Phase::Run => (),
-            Phase::Compare => (),
+            Phase::Compare => self.compare(samples),
+            Phase::Void => (),
         }
     }
 }
@@ -222,6 +277,9 @@ impl SubcorticalNucleus for EvalSequence {
             .syn_states()
             .syn_strengths()
             .syn_flag_sets()
+            .syn_src_slc_ids()
+            .syn_src_col_v_offs()
+            .syn_src_col_u_offs()
             .build());
 
         Ok(())
@@ -298,7 +356,7 @@ impl SubcorticalNucleus for EvalSequence {
         let future_recv = self.sampler.as_ref().unwrap().recv()
             .join(self.state.clone().lock().err_into())
             .map(move |(samples, mut state)| {
-                state.cycle(&samples, cycle_counter, &cursor_pos,
+                state.cycle(cycle_counter, &samples, &cursor_pos,
                     &next_cursor_pos);
             })
             .map_err(|err| panic!("{}", err));
@@ -389,9 +447,8 @@ fn define_lm_schemes() -> LayerMapSchemeList {
                     )
                     .tft(TuftScheme::basal().distal()
                         // .dens_per_tft(16)
-                        .dens_per_tft(4)
-                        // .syns_per_den(64)
-                        .syns_per_den(16)
+                        .dens_per_tft(2)
+                        .syns_per_den(64)
                         .max_active_dens_l2(0)
                         .thresh_init(0)
                         .src_lyr(TuftSourceLayer::define("iii")

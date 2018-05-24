@@ -169,6 +169,11 @@ pub mod tests {
             Synapse { den, syn_id_den, idx }
         }
 
+        /// Returns the index of this synapse within its dendrite.
+        pub fn syn_id(&self) -> u32 {
+            self.syn_id_den
+        }
+
         /// Returns the index of this synapse within its layer.
         pub fn idx(&self) -> u32 {
             self.idx
@@ -202,6 +207,11 @@ pub mod tests {
             let idx = den_idx(&cell.layer.dims(), cell.slc_id_lyr, cell.v_id, cell.u_id,
                 tuft_info.tft_den_idz, &tuft_info.dims, den_id);
             Dendrite { tuft, den_id, idx }
+        }
+
+        /// Returns the index of this dendrite within its tuft.
+        pub fn den_id(&self) -> u32 {
+            self.den_id
         }
 
         /// Returns the index of this dendrite within its layer.
