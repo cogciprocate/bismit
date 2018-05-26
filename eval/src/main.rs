@@ -10,6 +10,7 @@ extern crate clap;
 extern crate smallvec;
 extern crate vibi;
 extern crate qutex;
+// extern crate ansi_term;
 
 // mod layer_sampler;
 mod spatial;
@@ -114,6 +115,7 @@ fn main() {
     use clap::{Arg, /*ArgGroup,*/ App, /*SubCommand*/};
 
     env_logger::init();
+    // ansi_term::enable_ansi_support().ok();
 
     let matches = App::new("Bismit Evaluator")
         .version("0.1")

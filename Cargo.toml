@@ -30,7 +30,7 @@ enum_primitive = "*"
 find_folder = "*"
 time = "*"
 twox-hash = "*"
-colorify = "*"
+colorify = { version = "*", features = ["enable_windows"] }
 # futures = "0.1"
 futures-cpupool = "*"
 tokio-core = "*"

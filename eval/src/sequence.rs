@@ -14,6 +14,7 @@ use std::ops::Range;
 use smallvec::SmallVec;
 use rand::{self, FromEntropy, rngs::SmallRng};
 use rand::distributions::{Range as RandRange, Distribution};
+// use ansi_term::Colour::{Blue, Red, Cyan, Green};
 use qutex::{Qutex, Guard, QrwLock, ReadGuard as QrwReadGuard};
 use vibi::bismit::futures::{future, Future, FutureExt, Poll, Async};
 use vibi::bismit::ocl::{FutureReadGuard, ReadGuard};
@@ -55,9 +56,9 @@ struct TrialResult {
 }
 
 
-/// The evaluation state.
+/// The evaluation trials.
 #[derive(Debug)]
-struct State {
+struct Trials {
     /// A list of result for each item index in an SDR sequence.
     seq_item_results: Vec<Vec<TrialResult>>,
     sdrs: Arc<Sdrs>,
@@ -66,20 +67,22 @@ struct State {
     // focus.1 cell coords:
     poss_pred_cells: Vec<(SlcId, u32, u32)>,
     // focus.1 (idx in `poss_pred_cells`, den_id, syn_id, init_strength):
-    poss_pred_cells_syns: Vec<(usize, u32, u32, i8)>,
+    ppc_syns: Vec<(usize, u32, u32, i8)>,
+    ppc_syn_strengths: Vec<i8>,
 }
 
-impl State {
-    pub fn new(max_seq_len: usize, sdrs: Arc<Sdrs>) -> State {
+impl Trials {
+    pub fn new(max_seq_len: usize, sdrs: Arc<Sdrs>) -> Trials {
         // let poss_pred_cells = Vec::with_capacity(sdrs.active_cell_count);
 
-        State {
+        Trials {
             seq_item_results: vec![Vec::with_capacity(10000); max_seq_len],
             sdrs,
             phase: Phase::Init,
             focus: (SeqCursorPos::default(), SeqCursorPos::default()),
             poss_pred_cells: Vec::new(),
-            poss_pred_cells_syns: Vec::new(),
+            ppc_syns: Vec::new(),
+            ppc_syn_strengths: Vec::new(),
         }
     }
 
@@ -94,8 +97,9 @@ impl State {
         // Allocate:
         self.poss_pred_cells = Vec::with_capacity(samples.map().dims().depth() as usize *
             self.sdrs.active_cell_count);
-        self.poss_pred_cells_syns = Vec::with_capacity(samples.map().dims().depth() as usize *
+        self.ppc_syns = Vec::with_capacity(samples.map().dims().depth() as usize *
             self.sdrs.active_cell_count * 4);
+        self.ppc_syns = Vec::with_capacity(self.ppc_syns.capacity());
 
         let col_count = samples.map().dims().columns();
 
@@ -123,16 +127,24 @@ impl State {
                                 let col_id = s.src_axon_idx().unwrap() % col_count;
                                 focus_0_set.contains(&col_id)
                             },
+                            // Out of range axon:
                             Err(_) => false,
                         } }) {
                     let syn_info = (pp_cel_idx, den.map().den_id(), syn.map().syn_id(), syn.strength());
-                    self.poss_pred_cells_syns.push(syn_info);
+                    self.ppc_syns.push(syn_info);
                     pred_syn_count += 1;
+
+                    let dst_syn_str = samples.cell(cell.map().slc_id_lyr(),
+                        cell.map().v_id(), cell.map().u_id()).tuft_distal().unwrap()
+                        .dendrite(den.map().den_id()).synapse(syn.map().syn_id()).strength();
+                    // print!("[{}]", dst_syn_str);
+                    self.ppc_syn_strengths.push(dst_syn_str);
                 }
             }
 
-            print!("[s:{}, v:{}, u:{} | col:{}, syns: {}]", cell.map().slc_id_lyr(),
-                cell.map().v_id(), cell.map().u_id(), cell.map().col_id(), pred_syn_count);
+            ////// KEEPME (CELL INFO):
+            // print!("[s:{}, v:{}, u:{} | col:{}, syns: {}]", cell.map().slc_id_lyr(),
+            //     cell.map().v_id(), cell.map().u_id(), cell.map().col_id(), pred_syn_count);
 
             // TODO: Check the strength of the PROXIMAL focus_1 synapses (only
             // one per cell) and possibly set it > 0 for the purposes of this
@@ -143,6 +155,8 @@ impl State {
 
         println!("\nPredictor cell count: {} / {}", self.poss_pred_cells.len(),
             self.poss_pred_cells.capacity());
+        println!("\nPredictor cell synapse count: {} / {}", self.ppc_syns.len(),
+            self.ppc_syns.capacity());
     }
 
     /// Compares stuff.
@@ -150,15 +164,32 @@ impl State {
         // Check the strength of the PROXIMAL focus_1 synapses (only one per
         // cell) to make sure that they have become solid.
         println!("Proximal synapse strengths:");
-        for &(ppc_idx, den_id, syn_id, str_init) in self.poss_pred_cells_syns.iter() {
+        for (&(ppc_idx, den_id, syn_id, str_init), &orig_syn_str) in self.ppc_syns.iter()
+                .zip(self.ppc_syn_strengths.iter()) {
             let (slc, v, u) = self.poss_pred_cells[ppc_idx];
-            let prx_syn_str = samples.cell(slc, v, u).tuft_proximal().unwrap()
-                .dendrite(0).synapse(0).strength();
-            print!("[{}]", prx_syn_str);
-        }
-        println!();
+            // let prx_syn_str = samples.cell(slc, v, u).tuft_proximal().unwrap()
+            //     .dendrite(0).synapse(0).strength();
+            // print!("[{}]", prx_syn_str);
+            // assert!(prx_syn_str >= 0);
 
-        // TODO: Check that `poss_pred_cells_syns` have increased in strength.
+            // TODO: Verify that the src_axn_idx has not changed.
+
+            let new_syn_str = samples.cell(slc, v, u).tuft_distal().unwrap()
+                .dendrite(den_id).synapse(syn_id).strength();
+            // if new_syn_str != orig_syn_str {
+            //     print!("[{}->{}]", orig_syn_str, Cyan.bold().paint(new_syn_str.to_string()));
+            // }
+
+            if new_syn_str != orig_syn_str {
+                printc!(default: "[{}->", orig_syn_str);
+                printc!(cyan_bold: "{}", new_syn_str);
+                printc!(default: "]");
+            }
+
+            // println!("This is in red: {}", Red.paint("a red string"));
+        }
+
+        // TODO: Check that `ppc_syns` have increased in strength.
     }
 
     /// Checks stuff.
@@ -169,7 +200,7 @@ impl State {
         match cycle_counter {
             0 => self.phase = Phase::Init,
             1 => self.phase = Phase::Run,
-            200 => self.phase = Phase::Compare,
+            200 | 400 | 600 | 800 | 1000 => self.phase = Phase::Compare,
             _ => self.phase = Phase::Void,
         }
 
@@ -196,7 +227,7 @@ struct EvalSequence {
     sdrs: Arc<Sdrs>,
     sdr_cursor: SeqCursor,
     sampler: Option<CorticalLayerSampler>,
-    state: Qutex<State>,
+    trials: Qutex<Trials>,
 }
 
 impl EvalSequence {
@@ -234,7 +265,7 @@ impl EvalSequence {
         // let sdr_cursor = SeqCursor::new((4, 8), 25, sdrs.len());
         let max_seq_len = 5;
         let sdr_cursor = SeqCursor::new((5, 5), 1, sdrs.len());
-        let state = Qutex::new(State::new(max_seq_len, sdrs.clone()));
+        let trials = Qutex::new(Trials::new(max_seq_len, sdrs.clone()));
 
         EvalSequence {
             area_name: area_name,
@@ -244,7 +275,7 @@ impl EvalSequence {
             sdrs,
             sdr_cursor,
             sampler: None,
-            state,
+            trials,
         }
     }
 
@@ -354,9 +385,9 @@ impl SubcorticalNucleus for EvalSequence {
         let next_cursor_pos = self.sdr_cursor.next_pos();
 
         let future_recv = self.sampler.as_ref().unwrap().recv()
-            .join(self.state.clone().lock().err_into())
-            .map(move |(samples, mut state)| {
-                state.cycle(cycle_counter, &samples, &cursor_pos,
+            .join(self.trials.clone().lock().err_into())
+            .map(move |(samples, mut trials)| {
+                trials.cycle(cycle_counter, &samples, &cursor_pos,
                     &next_cursor_pos);
             })
             .map_err(|err| panic!("{}", err));

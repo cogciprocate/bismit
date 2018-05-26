@@ -9,9 +9,11 @@ rand = "*"
 log = "*"
 env_logger = "*"
 clap = "*"
-colorify = "*"
+colorify = { version = "~0.2.3", features = ["enable_windows"] }
+# colorify = { path = "../../colorify", features = ["enable_windows"] }
 # qutex = "*"
 smallvec = "*"
+# ansi_term = "*"
 
 [dependencies.qutex]
 version = "*"
