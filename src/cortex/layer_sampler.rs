@@ -14,12 +14,12 @@ use ::{Error as CmnError, Thalamus, CorticalAreas,  SamplerKind, CellSampleIdxs,
 /// Determines start and end indexes for a range and length.
 fn bounds_start_end<R, T>(range: R, len: T) -> (T, T)
         where T: Integer + Copy, R: RangeBounds<T> {
-    let start = match range.start() {
+    let start = match range.start_bound() {
         Included(&n) => n,
         Excluded(&n) => n + T::one(),
         Unbounded    => T::zero(),
     };
-    let end = match range.end() {
+    let end = match range.end_bound() {
         Included(&n) => n + T::one(),
         Excluded(&n) => n,
         Unbounded    => len,
