@@ -34,7 +34,7 @@ colorify = { version = "*", features = ["enable_windows"] }
 # futures = "0.1"
 futures-cpupool = "*"
 tokio-core = "*"
-crossbeam = "*"
+crossbeam = "0.3"
 cpuprofiler = { version = "*", optional = true }
 failure = "*"
 
@@ -45,9 +45,9 @@ git = "https://github.com/cogciprocate/ocl"
 branch = "futures-0.2"
 # features = ["kernel_debug_sleep", "kernel_debug_print"]
 
-[dependencies.futures]
-version = "~0.2.1"
-git = "https://github.com/rust-lang-nursery/futures-rs"
+[dependencies.futures-preview]
+version = "~0.2.2"
+# git = "https://github.com/rust-lang-nursery/futures-rs"
 # path = "../../futures-rs/futures"
 
 # [dev-dependencies]
@@ -55,7 +55,8 @@ git = "https://github.com/rust-lang-nursery/futures-rs"
 
 [dev-dependencies.qutex]
 version = "*"
-path = "../qutex"
+# path = "../qutex"
+git = "https://github.com/cogciprocate/qutex"
 
 [workspace]
 members = ["eval"]
