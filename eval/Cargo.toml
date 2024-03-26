@@ -4,8 +4,8 @@ version = "0.0.1"
 authors = ["Nick Sanders <cogciprocate@gmail.com>"]
 
 [dependencies]
-vibi = { path = "../../vibi", features = ["eval"] }
-# vibi = { version = "*", git = "https://github.com/cogciprocate/vibi", features = ["eval"] }
+# vibi = { path = "../../vibi", features = ["eval"] }
+vibi = { version = "*", git = "https://github.com/cogciprocate/vibi", features = ["eval"] }
 rand = "0.5"
 log = "*"
 env_logger = "*"
