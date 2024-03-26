@@ -21,8 +21,8 @@ default = ["eval"]
 
 [dependencies]
 # ocl = { version = "*", git = "https://github.com/cogciprocate/ocl" }
-# ocl-extras = { path = "../ocl/ocl/ocl-extras" }
-ocl-extras = { version = "*", git = "https://github.com/cogciprocate/ocl/ocl/ocl-extras" }
+ocl-extras = { path = "../ocl/ocl/ocl-extras" }
+# ocl-extras = { version = "*", git = "https://github.com/cogciprocate/ocl" }
 bitflags = "*"
 rand = "*"
 num = "*"
